@@ -1,17 +1,11 @@
 from ._entities import Price, DividendAmount, DividendPct, ParValue, Trade
 from pydantic import ValidationError
 import math
-from collections import deque
+from collections import deque, defaultdict
 import datetime
+import time
 
 class CommonDividend(Price, DividendAmount):
-    '''
-    Common dividend is meant to be used directly in a service. 
-    It is responsible to validate the inputs via inherited classes or inside
-    its methods. But it will not raise an exception. If the dividend cannot be 
-    calculated it will return None
-    (eg zerodivision errors or none type inputs etc)
-    '''
     def __init__(self, price, dividend_amount):
         super().__init__(price=price, dividend_amount=dividend_amount)
 
@@ -24,10 +18,12 @@ class CommonDividend(Price, DividendAmount):
             cd = cls(price=price, dividend_amount=dividend_amount)
             return cd.common_dividend()
         except ValidationError as e:
-            return None
+            raise e
         except (ZeroDivisionError, TypeError) as e:
             # Due to division this will handle the denominator of None or 0
             return None
+        except Exception as e:
+            raise e
 
 class PreferredDividendYield(Price, DividendPct, ParValue):
 
@@ -43,7 +39,7 @@ class PreferredDividendYield(Price, DividendPct, ParValue):
             cd = cls(price=price, dividend_pct=dividend_pct, par_value=par_value)
             return cd.prefered_dividend()
         except ValidationError as e:
-            return None
+            raise e
         except (ZeroDivisionError, TypeError) as e:
             # Due to division this will handle the denominator of None or 0
             return None
@@ -61,9 +57,9 @@ class PERatio(Price, DividendAmount):
             cpe = cls(price=price, dividend_amount = dividend_amount)
             return cpe.pe_ratio()
         except ValidationError as e:
-            return None
+            raise e
         except (ZeroDivisionError, TypeError) as e:
-            return None 
+            return None
         
 class GeometricMean:
     def __init__(self, prices = None):
@@ -96,9 +92,9 @@ class GeometricMean:
             lgm = cls(prices = prices)
             return lgm.geometric_mean_log()
         except (ZeroDivisionError, TypeError) as e:
-            return None
+            raise None
         except ValidationError as e:
-            return None
+            raise e
         
     @classmethod
     def calculate_geometric_mean(cls, prices):
@@ -106,11 +102,34 @@ class GeometricMean:
             lgm = cls(prices = prices)
             return lgm.geometric_mean_log()
         except (ZeroDivisionError, TypeError) as e:
-            return None
+            raise None
         except ValidationError as e:
-            return None
+            raise e
         except OverflowError as e:
             return lgm.geometric_mean_log()
+
+class WeightedPrice:
+    def __init__(self):
+        self.mkt_value = 0
+        self.ttl_shares = 0
+
+    def calculate(self, trades: [Trade]):
+        '''
+        get a list/gen function of trades and returns the vol weighted price
+        if trades not empty else None
+        '''
+        for trade in trades:
+            self.mkt_value += trade.price * trade.quantity
+            self.ttl_shares += trade.quantity
+
+        if self.ttl_shares > 0:
+            return self.mkt_value / self.ttl_shares
+        return None
+    
+    @classmethod
+    def calculate_vwp(cls, trades: [Trade]):
+        vwp = cls()
+        return vwp.calculate(trades=trades)
 
 class VolWeightedPrice:
     def __init__(self):
@@ -131,12 +150,26 @@ class VolWeightedPrice:
             self.add_trade(Trade(**trade))
         return self.current_vol_weighted_price()
     
+    def reset(self):
+        self.mkt_value = 0
+        self.ttl_shares = 0
+    
 class TradeManager:
     def __init__(self):
-        self.trades = deque()
+        self.trades = defaultdict(deque)
 
-    def add_trade(self, trade: Trade):
-        self.trades.append(trade)
+    def add_trade(self, symbol, trade: Trade):
+        self.trades[symbol].append(trade)
+
+    def remove_trade(self):
+        # Not in use yet
+        while True:
+            if self.trades:
+                current_time = datetime.datetime.now()
+                lock_time = current_time - datetime.timedelta(minutes=15)
+                if self.trades[0].timestamp < lock_time:
+                    print(len(self.trades) ,"removed one")
+                    self.trades.popleft()
 
     def sliced_trades(self, period = 15):
         current_time = datetime.datetime.now()
@@ -145,35 +178,34 @@ class TradeManager:
         return self.trades
 
 
-gm = GeometricMean(prices=[0,10,20])
-gm.geometric_mean()
+# gm = GeometricMean(prices=[0,10,20])
+# gm.geometric_mean()
 
-import random
-import datetime
+# import random
+# import datetime
 
-def generate_trades(nrecords = 100):
-    i = 0
-    while i < nrecords:
-        yield {
-            "price": random.randint(1, 250),
-            "quantity": random.randint(1, 500),
-            "timestamp": (datetime.datetime.now() - datetime.timedelta(minutes=14)).strftime("%Y-%m-%d %H:%M:%S"),
-            "order": random.choice(['BUY', 'SELL'])
-        }
-        i +=1
+# def generate_trades(nrecords = 100):
+#     i = 0
+#     while i < nrecords:
+#         yield {
+#             "price": random.randint(1, 250),
+#             "quantity": random.randint(1, 500),
+#             "timestamp": (datetime.datetime.now() - datetime.timedelta(minutes=14)).strftime("%Y-%m-%d %H:%M:%S"),
+#             "order": random.choice(['BUY', 'SELL'])
+#         }
+#         i +=1
 
 
-# How to calculate VWP assuming the prices are in the last 15 min
-trades = generate_trades()
+# # How to calculate VWP assuming the prices are in the last 15 min
+# trades = generate_trades()
 
-trade_manager = TradeManager()
-for trade in trades:
-    trade_manager.add_trade(trade)
+# trade_manager = TradeManager()
+# for trade in trades:
+#     trade_manager.add_trade(trade)
 
-vwp = VolWeightedPrice()
-for trade in trades:
-    vwp.add_trade(Trade(**trade))
-print(vwp.current_vol_weighted_price())
+# vwp = VolWeightedPrice()
+# for trade in trades:
+#     vwp.add_trade(Trade(**trade))
 
 
 
@@ -223,7 +255,7 @@ print(vwp.current_vol_weighted_price())
 #                 return func(*args, **kwargs)
 #             except (ZeroDivisionError, TypeError):
 #                 # Due to division this will handle the denominator of None or 0
-#                 return None
+#                 raise e
 #         return wrapper
 
 #     @dividend_handler
@@ -237,7 +269,7 @@ print(vwp.current_vol_weighted_price())
 #         return cd.common_dividend()
 #     except ValidationError as e:
 #         print(e)
-#         return None
+#         raise e
     
 
 # try:

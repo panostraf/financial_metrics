@@ -1,6 +1,8 @@
 from pydantic import BaseModel, field_validator
 from enum import IntEnum
 from datetime import datetime
+from exc import CustomValidationError
+
 
 '''
 This module serves as the base of this project by defining essential 
@@ -20,40 +22,32 @@ Usage Guidelines:
     fostering maintainability and coherence.
 '''
 
+def float_contraints(value, obj_name="Instance", restrict_zero=False):
+    if not isinstance(value, float):
+        raise ValueError(f"{obj_name} must be a numeric value, {type(value)} provided instead")
+    if value < 0:
+        raise ValueError(f"{obj_name} must be positive number, {value} provided instead")
+    if restrict_zero:
+        if value == 0:
+            raise ValueError(f"{obj_name} cannot be zero, {value} provided instead")
+    return value
+
+
 class Price(BaseModel):
-    # accepts float None and zero
     price: float | None
 
     @field_validator('price',mode='after')
     def validate_price(cls, value):
-        ## Uncomment the following lines will enable None types for price
-        # if value == None:
-            # return value
-        if not isinstance(value, float):
-            raise ValueError("Price must be a numeric value, not a string")
-
-        if value < 0:
-            raise ValueError("Price must be greater than 0")
-
-        return value
+        return float_contraints(value=value, obj_name="Price", restrict_zero=True)
 
 class DividendAmount(BaseModel):
-    # Accepts float none and zero
-    dividend_amount: float | None
+    dividend_amount: float | None = 0
 
     @field_validator("dividend_amount", mode="after")
     def validate_dividend(cls, value):
-        if value == None:
-            value = 0.0
-        if not isinstance(value, float):
-            raise ValueError("Dividend must be numeric")
-        
-        if value < 0:
-            raise ValueError("Dividend cannot be negative")
-        return value
+        return float_contraints(value=value, obj_name="Dividend Amount", restrict_zero=False)
 
 class DividendPct(BaseModel):
-    # Accepts float none and zero and str with % symbol
     dividend_pct: float | None
 
     @field_validator("dividend_pct", mode="before")
@@ -66,27 +60,14 @@ class DividendPct(BaseModel):
 
     @field_validator("dividend_pct", mode="after")
     def validate_dividend(cls, value):
-        if value == None:
-            return 0.0
-        if not isinstance(value, float):
-            raise ValueError("Dividend must be numeric")
-        
-        if value < 0:
-            raise ValueError("Dividend cannot be negative")
-        return value
+        return float_contraints(value=value, obj_name="Dividend percentage", restrict_zero=True)
 
 class Quantity(BaseModel):
-    # Accepts only positing numbers. But supports floating for case of fractional shares
     quantity: float | None
 
     @field_validator('quantity', mode='after')
     def validate_quantity(cls, value):
-        if not isinstance(value, float):
-            raise ValueError("Quantity must be numeric")
-        
-        if value <= 0:
-            raise ValueError("Quantity cannot be negative or possitive")
-        return value
+        return float_contraints(value=value, obj_name="Quantity", restrict_zero=True)
 
 class ParValue(BaseModel):
     par_value: float | None
@@ -94,12 +75,7 @@ class ParValue(BaseModel):
     
     @field_validator('par_value', mode='after')
     def validate_par_value(cls, value):
-        if not isinstance(value, float):
-            raise ValueError("Quantity must be numeric")
-        
-        if value <= 0:
-            raise ValueError("Quantity cannot be negative or possitive")
-        return value
+        return float_contraints(value=value, obj_name="Par value", restrict_zero=True)
 
 class OrderType(IntEnum):
     BUY = 1
@@ -136,7 +112,9 @@ class Trade(Price, Quantity, Order):
         try:
             return datetime.fromisoformat(value)
         except Exception as e:
+            # Probably could face type error and value errors when not str in correct format or None or int
             raise ValueError("Timestamp format is not correct for", value)
+        
     @property
     def trade(self):
         return {
@@ -145,4 +123,3 @@ class Trade(Price, Quantity, Order):
             "quantity":self.quantity, 
             "order":self.order_name
             }
-

@@ -6,7 +6,7 @@ import datetime
 @pytest.mark.parametrize("price, expected_result", [
     (2, 2.0),
     ("20", 20.0),
-    (0, 0.0)
+    # (0, 0.0)
 ])
 def test_price_entity_success(price, expected_result):
     p = Price(price=price)
@@ -17,7 +17,8 @@ def test_price_entity_success(price, expected_result):
     (None, ValueError),
     ("-2.3", ValueError),
     (-1, ValueError),
-    ("Invalid", ValueError)
+    ("Invalid", ValueError),
+    (0, ValueError)
 ])
 def test_price_entity_exception(price, expected_exception):
     
@@ -29,7 +30,7 @@ def test_price_entity_exception(price, expected_exception):
     (2, 2.0),
     ("20", 20.0),
     (0, 0.0),
-    (None, 0.0)
+
 ])
 def test_dividend_entity_success(dividend, expected_result):
     d = DividendAmount(dividend_amount=dividend)
@@ -40,7 +41,8 @@ def test_dividend_entity_success(dividend, expected_result):
     ("-2.3", ValueError),
     (-1, ValueError),
     ("Invalid", ValueError),
-    (["dfew",['fwef']], ValueError)
+    (["dfew",['fwef']], ValueError),
+    (None, ValueError)
 ])
 def test_dividend_entity_exception(dividend, expected_exception):
     with pytest.raises(expected_exception):
@@ -50,10 +52,8 @@ def test_dividend_entity_exception(dividend, expected_exception):
 @pytest.mark.parametrize("dividend, expected_result", [
     (2, 2.0),
     ("20", 20.0),
-    (0, 0.0),
-    (None, 0.0),
     ("2%", 2.0),
-    ("0%", 0.0)
+    
 ])
 def test_dividend_pct_entity_success(dividend, expected_result):
     d = DividendPct(dividend_pct=dividend)
@@ -61,11 +61,13 @@ def test_dividend_pct_entity_success(dividend, expected_result):
     assert type(d.dividend_pct) == float
         
 @pytest.mark.parametrize("dividend, expected_exception", [
-    
+    (None, ValueError),
     ("-2.3", ValueError),
     (-1, ValueError),
     ("Invalid", ValueError),
-    (["dfew",['fwef']], ValueError)
+    (["dfew",['fwef']], ValueError),
+    ("0%", ValueError),
+    (0, ValueError),
 ])
 def test_dividend_pct_entity_exception(dividend, expected_exception):
     with pytest.raises(expected_exception):
@@ -151,8 +153,9 @@ def test_trade(price, quantity, order, timestamp):
 
 @pytest.mark.parametrize("price, quantity, order, timestamp", [
     (10, 10, 1, "2022-02-01 00:10:10:01"),
+    (-10, 10, 1, "2022-02-01 00:10:10"),
+    (10, None, 1, "2022-02-01 00:10:10")
 ])
 def test_trade_fail(price, quantity, order, timestamp):
         with pytest.raises(ValueError):
             Trade(price=price, quantity=quantity, order=order, timestamp=timestamp)
-    
