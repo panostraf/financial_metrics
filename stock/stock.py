@@ -13,13 +13,13 @@ class Stock:
         self.recent_trades = deque()
         self.stock_data = self.get_symbol_info()
     
-    def get_symbol_info(self):
+    def get_symbol_info(self) -> dict:
         try:
             return stock_data[self.symbol]
         except KeyError:
             raise ValueError(f"Not symbol found with name {self.symbol}")
 
-    def get_dividend_yield(self, price):
+    def get_dividend_yield(self, price: float) -> float | None:
         if self.stock_data['Type'] == "Common":
             d = financial_metrics.CommonDividend.calculate_common_dividend(
                 price=price, 
@@ -35,14 +35,14 @@ class Stock:
                 )
             return d if d else None
         
-    def get_pe_ratio(self, price):
+    def get_pe_ratio(self, price : float) -> float | None:
         pe_ratio = financial_metrics.PERatio.calculate_pe_ratio(
             price=price,
             dividend_amount=self.stock_data['Last Dividend']
         )
         return pe_ratio if pe_ratio else None
 
-    def record_trade(self,price, quantity, timestamp, order):
+    def record_trade(self,price :float, quantity: float, timestamp:datetime, order:bool | str):
         trade = financial_metrics.Trade(
             price=price,
             quantity=quantity,
@@ -50,15 +50,8 @@ class Stock:
             timestamp=timestamp
         )
         self.trades.append(trade)
-        # self.recent_trades.append(trade)
-
-    # def get_weighted_stock_price_(self):
-    #     financial_metrics.WeightedPrice.calculate_vwp(trades = self.trades)
-
-    # def add_trade(self, trade: Trade):
-    #     self.trades.append(trade)
-        
-    def get_weighted_stock_price(self):
+ 
+    def get_weighted_stock_price(self) -> float | None:
         current_time = datetime.now()
         recent_trades_interval = current_time - timedelta(minutes=self.MINUTES)
         
@@ -70,7 +63,8 @@ class Stock:
                 vwp.add_trade(record)
             else:
                 break
-        # remove every record not in 15 min from this list
+
+        # remove every record not in 15 min from this list to offload memory
         self.trades = self.trades[-number_of_trades:]
         result = vwp.current_vol_weighted_price()
         return result if result else None

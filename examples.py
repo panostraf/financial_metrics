@@ -4,7 +4,7 @@ from stock.cfg import stock_data
 import datetime, random
 from pydantic import ValidationError
 
-SYMBOL = "TEA"
+SYMBOL = "ALE"
 PRICE = 100
 
 print("symbol:", SYMBOL)
@@ -56,6 +56,8 @@ def trade_generator():
         seconds -= 2
         if seconds <= 0:
             return
+
+stock_symbol = Stock(SYMBOL)
 
 for ticker,trade in trade_generator():
     if ticker == SYMBOL:

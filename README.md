@@ -1,5 +1,5 @@
 # Description:
-A scalable and easy to use financial application that performs various stock-related calculations for a given set of stocks. The application is capable of calculating the dividend yield, P/E Ratio, recording trades, calculating the Volume Weighted Stock Price based on trades in the past 15 minutes, and computing the GBCE All Share Index.
+A simple and scalable financial application that performs various stock-related calculations for a given set of stocks. The application is capable of calculating the dividend yield, P/E Ratio, recording trades, calculating the Volume Weighted Stock Price based on trades in the past 15 minutes, and computing the GBCE All Share Index.
 
 
 # Installation
@@ -137,6 +137,31 @@ Usage:
                 dividend_amount=dividend_amount
             )
 
+  ## GeometricMean
+
+  Attributes:
+
+  - prices: list[float] or None
+
+  Methods:
+  This class has 2 methods that does the same thing. Although calculating geometric mean 
+  in the classic way could result OverFlowError. Thus using log is capable to overcome this issue.
+
+    - geometric_mean_log()
+    - geometric_mean()
+
+  Usage:
+
+      gm = GeometricMean(prices=prices)
+      gm.geometric_mean()
+      #or
+      gm.geometric_mean_log()
+      
+      # Using class methods:
+      
+      GeometricMean.calculate_geometric_mean( prices = prices )
+      GeometricMean.calculate_geometric_mean_log( prices = prices )
+
 
 ## VolWeightedPrice
 
@@ -149,7 +174,7 @@ Methods:
   - calculate(self, trades: [Trade]) -> float | None
   
 Returns: 
-  float | None (None if the list has empty)
+  float | None (None if the list is empty)
 
 Raises:
   No exceptions are raised
@@ -257,7 +282,7 @@ Methods:
   def trade_generator():
       # Assume a trade per minute
       seconds = 1800 # 30min
-      for _ in range(10000):
+      for _ in range(100000):
           yield random.choice(['TEA', 'POP', 'ALE', 'GIN', 'JOE']), {
               "price": random.randint(1, 250),
               "quantity": random.randint(1, 500),

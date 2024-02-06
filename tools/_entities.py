@@ -1,7 +1,6 @@
 from pydantic import BaseModel, field_validator
 from enum import IntEnum
 from datetime import datetime
-from exc import CustomValidationError
 
 
 '''
@@ -112,7 +111,6 @@ class Trade(Price, Quantity, Order):
         try:
             return datetime.fromisoformat(value)
         except Exception as e:
-            # Probably could face type error and value errors when not str in correct format or None or int
             raise ValueError("Timestamp format is not correct for", value)
         
     @property
